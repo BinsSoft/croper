@@ -1,17 +1,30 @@
 class Cropper {
     constructor(config) {
         this.selector = null;
+        
         this.uploaderInput = null;
         if (config.selector) {
             this.selector = document.querySelector(config.selector);
             this.wrap(this.selector)
         }
         this.cropActionConfig = {
+            image:null,
             minWidth:30,
             minHeight:30,
             maxWidth:null,
             maxHeight:null,
-            margin:2
+            margin:2,
+            handeler:null,
+            container:null,
+            previewContainer:null,
+            orginal: {
+                height:0,
+                width:0,
+            },
+            resize: {
+                height:0,
+                width:0,
+            }
         }
         this.generateCropper();
     }
@@ -43,10 +56,14 @@ class Cropper {
                         uploaderPreviewContainer.style.backgroundImage = "url(" + e.target.result + ")";
                         let selectorWidth = this.selector.offsetWidth;
                         let selectorHeight = this.selector.offsetHeight;
+                        this.cropActionConfig.image = e.target.result;
                         let img = new Image();
                         img.src = e.target.result;
                         let _this = this;
                         img.onload = function () {
+                            _this.cropActionConfig.orginal.height = this.height;
+                            _this.cropActionConfig.orginal.width = this.width;
+
                             let containerRatioHeight = parseInt((this.height / this.width) * selectorWidth);
                             if (containerRatioHeight > selectorHeight) {
                                 containerRatioHeight = selectorHeight;
@@ -57,6 +74,9 @@ class Cropper {
                                 uploaderPreviewContainer.style.width = obj.width + 'px';
                                 _this.cropActionConfig['maxWidth'] = obj.width;
                                 _this.cropActionConfig['maxHeight'] = obj.height;
+
+                                _this.cropActionConfig.resize.height = obj.height;
+                                _this.cropActionConfig.resize.width = obj.width;
                             })
                         }
 
@@ -66,11 +86,13 @@ class Cropper {
                         let cropperAction = document.createElement('div');
                         cropperAction.classList.add('cropper-action');
                         cropperAction.setAttribute('draggable', true);
-                        cropperAction.setAttribute('resize', 'both');
+                        
+                        this.cropActionConfig.handeler = cropperAction;
                         this.dragElement(cropperAction);
 
                         cropperActionContainerBox.appendChild(cropperAction);
                         uploaderPreviewContainer.appendChild(cropperActionContainerBox);
+                        this.cropActionConfig.container = uploaderPreviewContainer;
 
                         this.selector.appendChild(uploaderPreviewContainer);
 
@@ -86,12 +108,13 @@ class Cropper {
 
                         let uploadButton = document.createElement('button');
                         uploadButton.innerText = 'Save';
-                        uploadButton.addEventListener('click', () => {
-                            alert('Upload')
-                        });
+                        uploadButton.addEventListener('click', this.cutter.bind(this));
                         buttonContainer.appendChild(uploadButton);
 
-
+                        let cropPreviewContainer = document.createElement('div');
+                        cropPreviewContainer.classList.add('crop-preview');
+                        this.cropActionConfig.previewContainer = cropPreviewContainer;
+                        buttonContainer.appendChild(cropPreviewContainer);
                         this.selector.parentElement.appendChild(buttonContainer);
                         this.toggleLoader();
                     }
@@ -107,6 +130,35 @@ class Cropper {
             this.selector.appendChild(uploaderContainer);
 
         }
+    }
+
+    cutter() {
+        let cropWidth = (this.cropActionConfig.handeler.offsetWidth / this.cropActionConfig.resize.width)*this.cropActionConfig.orginal.width;
+
+        let cropHeight = (this.cropActionConfig.handeler.offsetHeight / this.cropActionConfig.resize.height)*this.cropActionConfig.orginal.height;
+        var childOffset = {
+            top: this.cropActionConfig.handeler.offsetTop - this.cropActionConfig.handeler.parentElement.offsetTop,
+            left: this.cropActionConfig.handeler.offsetLeft - this.cropActionConfig.handeler.parentElement.offsetLeft
+        }
+
+        let cropY = (childOffset.top / this.cropActionConfig.resize.width) *this.cropActionConfig.orginal.width; 
+
+        let cropX = (childOffset.left / this.cropActionConfig.resize.width) *this.cropActionConfig.orginal.width;
+        
+        let theImage = this.cropActionConfig.image;
+        var output = this.cropActionConfig.previewContainer;
+        let c1 = document.createElement('canvas');
+        var canvas = c1.getContext("2d");
+        c1.width = cropWidth;
+        c1.height = cropHeight;
+        var img = new Image();
+        img.src = theImage;
+        img.onload = (function() {
+            canvas.drawImage(img,cropX, cropY,cropWidth, cropHeight,0,0,cropWidth, cropHeight);
+            output.innerHTML = "";
+            output.appendChild(c1);
+            this.cropActionConfig.handeler.style.backgroundImage = "url("+c1.toDataURL()+")";
+        }).bind(this)
     }
 
     toggleLoader(hide = true) {
@@ -172,11 +224,13 @@ class Cropper {
             } else {
                 elmnt.style.cursor = 'default';
             }
+            _this.cutter();
         }
     
         elmnt.onmousedown = function(e) {
             calEdgeConfig = _this.calc(e, elmnt);
             var isResizing = calEdgeConfig.rightedge || calEdgeConfig.bottomedge || calEdgeConfig.topedge || calEdgeConfig.leftedge;
+            
             if (isResizing) { // resizing div
                 resizeMouseDown(e);
             } else { // drag div
@@ -235,15 +289,17 @@ class Cropper {
 
         // https://codepen.io/zz85/pen/gbOoVP?editors=1111
         function elementResize(e) {
-
+            
             if (calEdgeConfig.rightedge)
             {
-                if ((calvalue.x+elmnt.offsetLeft) < (_this.cropActionConfig.maxWidth-_this.cropActionConfig.margin)) {
+                //if ((calvalue.x+elmnt.offsetLeft) < (_this.cropActionConfig.maxWidth-_this.cropActionConfig.margin)) 
+                {
                     elmnt.style.width = Math.max(calvalue.x, _this.cropActionConfig.minWidth) + 'px';
                 }
             } 
             if (calEdgeConfig.bottomedge) {
-                if ((calvalue.y+elmnt.offsetTop) < _this.cropActionConfig.maxHeight-_this.cropActionConfig.margin) {
+                //if ((calvalue.y+elmnt.offsetTop) < _this.cropActionConfig.maxHeight-_this.cropActionConfig.margin) 
+                {
                     elmnt.style.height = Math.max(calvalue.y, _this.cropActionConfig.minHeight) + 'px';
                 }
             } 

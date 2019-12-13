@@ -70,13 +70,19 @@
     height: 100%;
 }
 .cropper-action {
-    background-position: top;
+    background-position: top left;
+    background-size: 100%;
     position: absolute;
     z-index: 999;
     width: 100px;
     height: 100px;
-    border: 3px solid #000;
+    border: 2px dashed #222;
+    resize: both;
 }
 .cropper-action.draggable{
     transform:translateX(-9999px);
-  }
+}
+.crop-preview canvas {
+    max-width: 150px;
+    max-height: 150px;
+}
